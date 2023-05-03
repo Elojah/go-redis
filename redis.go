@@ -2,30 +2,29 @@ package redis
 
 import (
 	"context"
-	"time"
 
-	"github.com/go-redis/redis/v8"
+	"github.com/redis/rueidis"
 )
 
 // Service wraps a redis client.
 type Service struct {
-	LockExpireUnit time.Duration
-
-	*redis.Client
+	rueidis.Client
 }
 
 // Dial connects grpc server and call Register method.
 func (s *Service) Dial(ctx context.Context, cfg Config) error {
-	s.LockExpireUnit = time.Duration(cfg.LockExpireUnit) * time.Millisecond
+	var err error
 
-	s.Client = redis.NewClient(&redis.Options{
-		Addr:     cfg.Addr,
-		Password: cfg.Password,
-		DB:       cfg.DB,
+	s.Client, err = rueidis.NewClient(rueidis.ClientOption{
+		InitAddress: []string{cfg.Addr},
+		Password:    cfg.Password,
+		SelectDB:    cfg.DB,
 	})
-	_, err := s.Client.Ping(ctx).Result()
+	if err != nil {
+		return err
+	}
 
-	return err
+	return s.Do(ctx, s.B().Ping().Build()).Error()
 }
 
 func (s *Service) Close(ctx context.Context) error {
